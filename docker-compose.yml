@@ -1,0 +1,102 @@
+services:
+  api:
+    build: .
+    ports:
+      - "3102:3102"
+    environment:
+      PORT: "3102"
+      # Image sets NODE_ENV=production; allow Dev JWT for local Compose only.
+      ALLOW_DEV_AUTH: "true"
+      DATABASE_URL: postgres://pantrypilot:pantrypilot@postgres:5432/pantrypilot
+      REDIS_URL: redis://redis:6379
+      AUTH_MODE: Development
+      AUTH_DEV_ISSUER: recipehub-dev
+      AUTH_DEV_AUDIENCE: recipehub
+      AUTH_DEV_SIGNING_KEY: RecipeHub-Dev-Signing-Key-At-Least-32-Chars!
+      RECIPE_HUB_BASE_URL: http://host.docker.internal:8080
+      KAFKA_ENABLED: ${KAFKA_ENABLED:-false}
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC: lifeatlas.recipes
+      KAFKA_GROUP_ID: pantry-pilot
+      BULLMQ_ENABLED: ${BULLMQ_ENABLED:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      redpanda:
+        condition: service_healthy
+        required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: pantrypilot
+      POSTGRES_PASSWORD: pantrypilot
+      POSTGRES_DB: pantrypilot
+    volumes:
+      - pantry_pilot_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pantrypilot -d pantrypilot"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Kafka-compatible broker for lifeatlas.recipes CloudEvents.
+  # Redpanda speaks the Kafka protocol — drop-in local stand-in for Apache Kafka (no ZooKeeper).
+  # Start: docker compose --profile kafka up -d
+  # Host: localhost:19092  |  in-compose: redpanda:9092
+  redpanda:
+    profiles: ["kafka"]
+    image: redpandadata/redpanda:v24.3.1
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 512M
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -q Healthy"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # Creates topic once Redpanda is healthy (profile kafka).
+  redpanda-init:
+    profiles: ["kafka"]
+    image: redpandadata/redpanda:v24.3.1
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint:
+      - bash
+      - -c
+      - |
+        rpk topic create lifeatlas.recipes -X brokers=redpanda:9092 --partitions 1 --replicas 1 || true
+        rpk topic list -X brokers=redpanda:9092
+
+volumes:
+  pantry_pilot_pg:

@@ -1,0 +1,43 @@
+{
+  "name": "pantry-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Life Atlas PantryPilot — inventory-aware meal prep",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/db/migrate.ts",
+    "consumer": "tsx src/workers/runRecipeConsumer.ts",
+    "seed:projections": "tsx scripts/seed-projections.ts",
+    "smoke": "tsx scripts/smoke-week1.ts",
+    "smoke:week2": "tsx scripts/smoke-week2.ts",
+    "smoke:week3": "tsx scripts/smoke-week3.ts",
+    "demo": "tsx scripts/demo-v1.ts",
+    "e2e:kafka": "tsx scripts/e2e-kafka.ts",
+    "test": "tsx --test tests/**/*.test.ts",
+    "test:unit": "tsx --test tests/domain.test.ts tests/planner.test.ts tests/inventory.test.ts",
+    "test:integration": "tsx --test tests/*.integration.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bullmq": "^6.1.2",
+    "fastify": "^5.2.1",
+    "ioredis": "^6.0.0",
+    "jose": "^6.0.8",
+    "kafkajs": "^2.2.4",
+    "pg": "^8.13.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/ioredis": "^4.28.10",
+    "@types/node": "^22.13.10",
+    "@types/pg": "^8.11.11",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
