@@ -110,13 +110,25 @@ KAFKA_ENABLED=true npm run dev
 | POST | `/households` | JWT |
 | GET/PATCH | `/households/{id}` | JWT |
 | GET/PUT | `/households/{id}/pantry` | JWT |
-| POST | `/households/{id}/plans` | JWT (`async:true` → BullMQ) |
+| POST | `/households/{id}/plans` | JWT (`async:true` → BullMQ `202`) |
 | GET | `/households/{id}/plans/current` | JWT |
 | POST | `/households/{id}/plans/{planId}/meals/{mealId}/replace` | JWT |
-| POST | `/households/{id}/plans/{planId}/confirm` | JWT |
+| POST | `/households/{id}/plans/{planId}/confirm` | JWT (`outcome`: `all` \| `mostly` \| `no`) |
 | GET | `/households/{id}/shopping-lists/current` | JWT |
 | POST | `/households/{id}/shopping-lists/{listId}/checkoffs` | JWT |
-| POST | `/dev/recipe-events` | JWT (Development) |
+| GET | `/integrations/recipe-hub/ping` | JWT |
+| POST | `/dev/recipe-events` | JWT (Development only) |
+
+### Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| `409 empty_projection` on plan | Recipe projection has no active recipes | `npm run seed:projections`, enable Kafka, or `POST /dev/recipe-events` |
+| `503` on `/health` | Postgres unreachable | `docker compose up -d postgres`; check `DATABASE_URL` (host port **5434**) |
+| `async: true` plan → `503 jobs_unavailable` | BullMQ/Redis off | `BULLMQ_ENABLED=true` and Redis via `REDIS_URL` |
+| Production boot refuses Dev JWT | `NODE_ENV=production` + `AUTH_MODE=Development` | Use Google OIDC, or lab-only `ALLOW_DEV_AUTH=true` |
+| RecipeHub ping `503` | RecipeHub down / wrong base URL | Start RecipeHub; set `RECIPE_HUB_BASE_URL` (default `http://localhost:8080`) |
+| Kafka consumer silent | Broker/profile not up | `docker compose --profile kafka up -d`; `KAFKA_ENABLED=true`; brokers `localhost:19092` |
 
 ## Docs
 

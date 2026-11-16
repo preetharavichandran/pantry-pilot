@@ -72,6 +72,16 @@ TOKEN=$(../recipe-hub/scripts/dev-token.sh user-a)
 
 Shared Dev JWT iss/aud/key with RecipeHub. Prod: Google OIDC (see `production-next.md`).
 
+## Connectivity check
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:3102/integrations/recipe-hub/ping
+# { "ok": true, "sampleCount": 0|1 }
+```
+
+Fails with Problem Details `503` / `recipehub_unavailable` when RecipeHub HTTP is down. Pantry CRUD and projection-based planning still work without this ping succeeding.
+
 ## TripWeaver (v2)
 
 `lifeatlas.trip.dates_changed` / `planned` → wind-down. Not in v1.
