@@ -119,11 +119,23 @@ KAFKA_ENABLED=true npm run dev
 | GET | `/integrations/recipe-hub/ping` | JWT |
 | POST | `/dev/recipe-events` | JWT (Development only) |
 
+Confirm body constraints (enforced in `InventoryLoopService`):
+
+| `outcome` | `skippedMealIds` | Pantry effect |
+|-----------|------------------|---------------|
+| `all` | omit / empty | Deplete all planned meals |
+| `mostly` | **required** (≥1 meal id) | Deplete meals not in the skip set |
+| `no` | omit / empty | No depletion |
+
+Confirm is once per plan (`409 already_confirmed` on a second call).
+
 ### Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `409 empty_projection` on plan | Recipe projection has no active recipes | `npm run seed:projections`, enable Kafka, or `POST /dev/recipe-events` |
+| `400 invalid_skips` on confirm | Wrong `skippedMealIds` for `outcome` | `all`/`no`: omit skips; `mostly`: include ≥1 valid meal id |
+| `409 already_confirmed` | Plan confirmed earlier | Use a new plan, or read `plans/current` |
 | `503` on `/health` | Postgres unreachable | `docker compose up -d postgres`; check `DATABASE_URL` (host port **5434**) |
 | `async: true` plan → `503 jobs_unavailable` | BullMQ/Redis off | `BULLMQ_ENABLED=true` and Redis via `REDIS_URL` |
 | Production boot refuses Dev JWT | `NODE_ENV=production` + `AUTH_MODE=Development` | Use Google OIDC, or lab-only `ALLOW_DEV_AUTH=true` |
